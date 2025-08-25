@@ -1,0 +1,55 @@
+name: Build and Push Docker Image
+
+# Bu pipeline, 'main' branch'ine her push yapıldığında tetiklenir.
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest # Job'un çalışacağı sanal makine
+    steps:
+      # 1. Adım: Kodu (uygulama deposunu) checkout et
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2. Adım: Docker Hub'a giriş yap
+      # GitHub repo'nuzun Ayarlar > Secrets and variables > Actions bölümünden
+      # DOCKERHUB_USERNAME ve DOCKERHUB_TOKEN (Access Token) adında iki secret oluşturmalısınız.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 3. Adım: Docker imajını build et ve Docker Hub'a push'la
+      # İmajı benzersiz kılması için etiket olarak Git commit SHA'sını kullanıyoruz.
+      # Bu, her commit'in izlenebilir bir imajı olmasını sağlar.
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: . # Dockerfile'ın bulunduğu dizin
+          push: true # İmajı push'la
+          tags: ermand172/microservice-demo-frontend:${{ github.sha }} # imaj:etiket
+      # 4. Adım: Manifest deposunu checkout et
+      - name: Checkout manifests repository
+        uses: actions/checkout@v3
+        with:
+          repository: ermandmedianova/microservice-demo-k8s-manifests # Manifest deponuzun adı
+          # Manifest deposuna push yapabilmek için Personal Access Token (PAT) kullanıyoruz.
+          # GitHub'da PAT oluşturup repo'nuza GIT_PAT adında bir secret olarak ekleyin.
+          token: ${{ secrets.GIT_PAT }}
+
+      # 5. Adım: Deployment.yaml dosyasındaki imaj etiketini güncelle
+      - name: Update image tag in frontend-manifest.yaml
+        run: |
+          sed -i "s|image:.*|image: ermand172/microservice-demo-frontend:${{ github.sha }}|g" frontend/frontend-manifest.yaml
+
+      # 6. Adım: Değişikliği manifest deposuna commit'le ve push'la
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add deployment.yaml
+          git commit -m "Update image to ${{ github.sha }}"
+          git push
