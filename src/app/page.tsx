@@ -121,7 +121,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-              <p className="mt-2 text-gray-600">Manage users and send welcome emails</p>
+              <p className="mt-2 text-gray-600">Manage users and send registration emails</p>
             </div>
             <div className="flex space-x-3">
               <button
