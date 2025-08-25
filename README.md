@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# User Management Frontend
 
-## Getting Started
+A Next.js frontend application for managing users with CRUD operations and email notifications.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **User Management**: Create, read, update, and delete users
+- **Email Integration**: Automatically sends welcome emails when users are created
+- **Modern UI**: Clean, responsive interface built with Tailwind CSS
+- **Real-time Feedback**: Toast notifications for user actions
+- **Form Validation**: Client-side validation using Zod and React Hook Form
+
+## Tech Stack
+
+- **Next.js 14** - React framework with App Router
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
+- **React Hook Form** - Form handling
+- **Zod** - Schema validation
+- **Axios** - HTTP client
+- **Lucide React** - Icons
+
+## Environment Variables
+
+Copy `env.example` to `.env.local` and configure:
+
+```env
+CRUD_API_URL=http://localhost:8006
+EMAIL_API_URL=http://localhost:8007
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Install dependencies
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Run development server
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-To learn more about Next.js, take a look at the following resources:
+## Docker
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Build and run with Docker:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Build image
+docker build -t user-management-frontend .
 
-## Deploy on Vercel
+# Run container
+docker run -p 3000:3000 \
+  -e CRUD_API_URL=http://localhost:8006 \
+  -e EMAIL_API_URL=http://localhost:8007 \
+  user-management-frontend
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## API Integration
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The frontend integrates with two microservices:
+
+### CRUD API (Port 8006)
+- `GET /users` - List all users
+- `POST /users` - Create new user
+- `PUT /users/{id}` - Update user
+- `DELETE /users/{id}` - Delete user
+
+### Email API (Port 8007)
+- `POST /send-email` - Send welcome email
+- `GET /task-status/{task_id}` - Check email status
+
+## Usage
+
+1. **View Users**: The main page displays all users in a table
+2. **Add User**: Click "Add User" button to create a new user
+3. **Edit User**: Click the edit icon next to any user
+4. **Delete User**: Click the delete icon and confirm
+5. **Email Notifications**: Welcome emails are automatically sent when creating users
+
+## Project Structure
+
+```
+src/
+├── app/
+│   └── page.tsx          # Main user management page
+├── components/
+│   ├── UserForm.tsx      # User creation/editing form
+│   └── UserList.tsx      # User table display
+└── lib/
+    ├── api.ts            # API client functions
+    └── validations.ts    # Zod schemas
+```

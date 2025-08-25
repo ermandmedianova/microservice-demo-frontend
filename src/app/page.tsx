@@ -1,103 +1,183 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { userApi, emailApi, User } from '@/lib/api';
+import { UserCreateForm, UserUpdateForm } from '@/lib/validations';
+import UserList from '@/components/UserList';
+import UserForm from '@/components/UserForm';
+import { Plus, RefreshCw } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // Load users on component mount
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setIsLoading(true);
+      const fetchedUsers = await userApi.getUsers();
+      setUsers(fetchedUsers);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateUser = async (data: UserCreateForm) => {
+    try {
+      setIsSubmitting(true);
+      
+      // Create user
+      const newUser = await userApi.createUser(data);
+      setUsers(prev => [...prev, newUser]);
+      
+      // Send welcome email
+      try {
+        const emailResponse = await emailApi.sendWelcomeEmail(newUser.email, newUser.name);
+        toast.success(`User created successfully! Welcome email queued (Task ID: ${emailResponse.task_id})`);
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError);
+        toast.success('User created successfully, but failed to send welcome email');
+      }
+      
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      toast.error('Failed to create user');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateUser = async (data: UserUpdateForm) => {
+    if (!editingUser) return;
+    
+    try {
+      setIsSubmitting(true);
+      const updatedUser = await userApi.updateUser(editingUser.id, data);
+      setUsers(prev => prev.map(user => user.id === editingUser.id ? updatedUser : user));
+      toast.success('User updated successfully');
+      setEditingUser(null);
+      setIsFormOpen(false);
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      toast.error('Failed to update user');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFormSubmit = async (data: UserCreateForm | UserUpdateForm) => {
+    if (editingUser) {
+      await handleUpdateUser(data as UserUpdateForm);
+    } else {
+      await handleCreateUser(data as UserCreateForm);
+    }
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    try {
+      await userApi.deleteUser(user.id);
+      setUsers(prev => prev.filter(u => u.id !== user.id));
+      toast.success('User deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      toast.error('Failed to delete user');
+    }
+  };
+
+  const openCreateForm = () => {
+    setEditingUser(null);
+    setIsFormOpen(true);
+  };
+
+  const openEditForm = (user: User) => {
+    setEditingUser(user);
+    setIsFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setIsFormOpen(false);
+    setEditingUser(null);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-right" />
+      
+      <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
+              <p className="mt-2 text-gray-600">Manage users and send welcome emails</p>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={loadUsers}
+                disabled={isLoading}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <button
+                onClick={openCreateForm}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add User
+              </button>
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+        {/* Stats */}
+        <div className="mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-medium">{users.length}</span>
+                </div>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Users</p>
+                <p className="text-2xl font-semibold text-gray-900">{users.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* User List */}
+        <UserList
+          users={users}
+          onEdit={openEditForm}
+          onDelete={handleDeleteUser}
+          isLoading={isLoading}
+        />
+
+        {/* User Form Modal */}
+        {isFormOpen && (
+          <UserForm
+            user={editingUser || undefined}
+            onSubmit={handleFormSubmit}
+            onCancel={closeForm}
+            isLoading={isSubmitting}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        )}
+      </div>
     </div>
   );
 }
