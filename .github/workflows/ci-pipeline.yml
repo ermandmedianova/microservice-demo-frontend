@@ -31,6 +31,9 @@ jobs:
           context: . # Dockerfile'ın bulunduğu dizin
           push: true # İmajı push'la
           tags: ermand172/microservice-demo-frontend:${{ github.sha }} # imaj:etiket
+          build-args: |
+            NEXT_PUBLIC_CRUD_API_URL=${{ secrets.NEXT_PUBLIC_CRUD_API_URL }}
+            NEXT_PUBLIC_EMAIL_API_URL=${{ secrets.NEXT_PUBLIC_EMAIL_API_URL }}
       # 4. Adım: Manifest deposunu checkout et
       - name: Checkout manifests repository
         uses: actions/checkout@v3
